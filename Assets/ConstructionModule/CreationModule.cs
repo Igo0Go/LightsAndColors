@@ -23,18 +23,22 @@ public class CreationModule : MonoBehaviour
     [Range(1, 4), Tooltip("Высота финального прыжка")]
     public float finalJampHeight = 2;
 
-    [Space(20), Tooltip("Пометить все дочерние объекты деталями")]
-    public bool renewDetails;
-    [Space(10), Tooltip("Случайная позиция для деталей")]
-    public bool randomizeDetailsPositions;
     [Range(1, 10), Tooltip("Радиус для случайной позиции")]
     public float randomPosRadius = 2;
-    [Space(10), Tooltip("Собрать детали в конструкицю")]
-    public bool returnDetails;
+
+    private Transform MyTransform
+    {
+        get
+        {
+            if (_myTransform == null)
+                _myTransform = transform;
+            return _myTransform;
+        }
+    }
+    private Transform _myTransform;
 
     private List<ConstructionDetailScript> details;
     private ConstrictionState constructState;
-    private Transform myTransform;
     Vector3 standartPos, FinalJumpPos;
     private int currentDetailIndex;
     private float maxBuildSpeed;
@@ -42,9 +46,9 @@ public class CreationModule : MonoBehaviour
 
     private void Start()
     {
-        myTransform = transform;
-        standartPos = myTransform.position;
-        FinalJumpPos = standartPos + myTransform.up * finalJampHeight;
+        _myTransform = transform;
+        standartPos = _myTransform.position;
+        FinalJumpPos = standartPos + _myTransform.up * finalJampHeight;
         GetDetails();
         constructState = ConstrictionState.Disactive;
         currentDetailIndex = -1;
@@ -131,9 +135,9 @@ public class CreationModule : MonoBehaviour
     private void CurrentDetailJump()
     {
         Vector3 dir = Vector3.up;
-        if (Vector3.Distance(myTransform.position, details[currentDetailIndex].transform.position) > 1)
+        if (Vector3.Distance(_myTransform.position, details[currentDetailIndex].transform.position) > 1)
         {
-            dir += (myTransform.position - details[currentDetailIndex].transform.position).normalized * 4;
+            dir += (_myTransform.position - details[currentDetailIndex].transform.position).normalized * 4;
         }
         details[currentDetailIndex].rb.AddForce(dir.normalized * jumpForce, ForceMode.Impulse);
         constructState = 0;
@@ -233,12 +237,12 @@ public class CreationModule : MonoBehaviour
     /// <param name="target"></param>
     private void MoveConstructToPosition(Vector3 target)
     {
-        Vector3 dir = target - myTransform.position;
+        Vector3 dir = target - _myTransform.position;
         if (dir.magnitude > Time.deltaTime * startBuildSpeed * Mathf.Abs(currentDetailIndex))
-            myTransform.position += dir * Time.deltaTime * startBuildSpeed * Mathf.Abs(currentDetailIndex);
+            _myTransform.position += dir * Time.deltaTime * startBuildSpeed * Mathf.Abs(currentDetailIndex);
         else
         {
-            myTransform.position = target;
+            _myTransform.position = target;
             Invoke("ReturnConstructToStandartPos", jumpDelay);
             constructState = ConstrictionState.Delay;
         }
@@ -256,9 +260,9 @@ public class CreationModule : MonoBehaviour
     }
     private void DisableThisConstruction()
     {
-        for (int i = 0; i < myTransform.childCount; i++)
+        for (int i = 0; i < _myTransform.childCount; i++)
         {
-            ConstructionDetailScript detail = myTransform.GetChild(i).GetComponent<ConstructionDetailScript>();
+            ConstructionDetailScript detail = _myTransform.GetChild(i).GetComponent<ConstructionDetailScript>();
             if (detail != null)
                 Destroy(detail);
         }
@@ -279,12 +283,13 @@ public class CreationModule : MonoBehaviour
         details[detailIndex].rb.useGravity = useGravity;
     }
 
+    [ContextMenu("Получить детали")]
     private void GetDetails()
     {
         details = new List<ConstructionDetailScript>();
-        for (int i = 0; i < myTransform.childCount; i++)
+        for (int i = 0; i < MyTransform.childCount; i++)
         {
-            ConstructionDetailScript detail = myTransform.GetChild(i).GetComponent<ConstructionDetailScript>();
+            ConstructionDetailScript detail = MyTransform.GetChild(i).GetComponent<ConstructionDetailScript>();
             if (detail != null) details.Add(detail);
         }
     }
@@ -293,12 +298,13 @@ public class CreationModule : MonoBehaviour
     /// Стирает все ссылки на детали, занова пробегается по всем вложенным объектам и превращает те из них, которые имеют Rigidbody,
     /// в детали
     /// </summary>
+    [ContextMenu("Обновить детали")]
     private void RenewAllDetails()
     {
         details = new List<ConstructionDetailScript>();
-        for (int i = 0; i < myTransform.childCount; i++)
+        for (int i = 0; i < MyTransform.childCount; i++)
         {
-            GameObject obj = myTransform.GetChild(i).gameObject;
+            GameObject obj = MyTransform.GetChild(i).gameObject;
             if (obj.GetComponent<Rigidbody>() != null)
             {
                 ConstructionDetailScript detail = obj.GetComponent<ConstructionDetailScript>();
@@ -317,17 +323,18 @@ public class CreationModule : MonoBehaviour
     /// <summary>
     /// Располагает все детали конструкции в случайных позициях в радиусе
     /// </summary>
+    [ContextMenu("Разбросать детали")]
     private void RandomizeDetailsPositions()
     {
-        for (int i = 0; i < myTransform.childCount; i++)
+        for (int i = 0; i < MyTransform.childCount; i++)
         {
-            GameObject obj = myTransform.GetChild(i).gameObject;
+            GameObject obj = MyTransform.GetChild(i).gameObject;
             if (obj.GetComponent<Rigidbody>() != null)
             {
                 ConstructionDetailScript detail = obj.GetComponent<ConstructionDetailScript>();
                 if (detail != null)
                 {
-                    detail.transform.position = myTransform.position + Random.insideUnitSphere * randomPosRadius; 
+                    detail.transform.position = MyTransform.position + Random.insideUnitSphere * randomPosRadius; 
                 }
             }
         }
@@ -336,11 +343,12 @@ public class CreationModule : MonoBehaviour
     /// <summary>
     /// Располагает детали так, чтобы снова получилась собранная конструкиция (кок она была сохранена при получении деталей)
     /// </summary>
+    [ContextMenu("Детали на позициях")]
     private void DetailsToStartPositions()
     {
-        for (int i = 0; i < myTransform.childCount; i++)
+        for (int i = 0; i < MyTransform.childCount; i++)
         {
-            GameObject obj = myTransform.GetChild(i).gameObject;
+            GameObject obj = MyTransform.GetChild(i).gameObject;
             if (obj.GetComponent<Rigidbody>() != null)
             {
                 ConstructionDetailScript detail = obj.GetComponent<ConstructionDetailScript>();
@@ -352,27 +360,6 @@ public class CreationModule : MonoBehaviour
             }
         }
         EditorUtility.SetDirty(gameObject);
-    }
-
-    private void OnDrawGizmos()
-    {
-        if(renewDetails)
-        {
-            RenewAllDetails();
-            renewDetails = false;
-        }
-
-        if (randomizeDetailsPositions)
-        {
-            RandomizeDetailsPositions();
-            randomizeDetailsPositions = false;
-        }
-
-        if (returnDetails)
-        {
-            DetailsToStartPositions();
-            returnDetails = false;
-        }
     }
 }
 
